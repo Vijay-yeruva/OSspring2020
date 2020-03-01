@@ -26,7 +26,8 @@
 
 void shell(char*);
 short execute_commands(char*);
-short execute_command(char*);
-int parseCommands(char*, char**);
+short execute_command(char*, char*);
+int parseCommand(char*, char*, char*);
+int tokenize_cmd(char*, char**);
 
 #endif

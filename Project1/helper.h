@@ -16,7 +16,8 @@
 #include <math.h>
 
 #define MAX_LEN 1024
-#define BUFF_LEN 32
+#define BUFF_LEN 256 
+#define MAX_TOKEN 10
 #define TERMINATE -1
 #define FAILURE 1
 #define SUCCESS 0
@@ -33,5 +34,6 @@ void print_user();
 char getch(FILE*);
 void delete(int, char*);
 char switch_keypad(char);
+int copybuff(char*, char*);
 
 #endif

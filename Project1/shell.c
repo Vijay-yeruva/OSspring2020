@@ -124,91 +124,123 @@ void shell(char* filename)
 short execute_commands(char* line)
 {
     short status = SUCCESS;
-    char* commands[15];
-    int ncoms = parseCommands(line, commands);
-    int i = 0;
-    for (i = 0; i < ncoms; i++)
-    {
-        execute_command(commands[i]);
-    }
+    char* command;
+    char end = 0;
+    printf("%s", "parsing commands\n");
+    int len = parseCommand(line, command, &end);
+    printf("%s\n", "parsed commands");
+    if(len > 0)
+    printf("%s %s %d %s", "executing command: ",command,len, "\n");
+    status = execute_command(command, &end);
+    printf("%s", "executed commands\n");
     return status;
 }
 
-int parseCommands(char* line, char** commands)
+int parseCommand(char *line, char *command, char* end)
 {
-    char buff[BUFF_LEN] = { '\0' };
-    char* p = buff;
-    int i = 0;
+    char buff[BUFF_LEN] = {'\0'};
+    char *p = buff;
+    printf("parsing line: %s\n",line);
     while (*line != '\0')
     {
-        if ((*line == ' ' && *(line + 1) != '-') || *line == '|' || *line == '<' || *line == '>' || *line == '&')
+        if (*line == '|' || *line == '<' || *line == '>' || *line == '&')
         {
-            if (strlen(buff) == 0)
-            {
-                line++;
-                continue;
-            }
-            commands[i] = (char*)malloc(strlen(buff));
-            strcpy(commands[i], buff);
-            i++;
-            if (*line == '|' || *line == '<' || *line == '>' || *line == '&')
-            {
-                memset(buff, '\0', BUFF_LEN);
-                p = buff;
-                *p = *line;
-                line++;
-                p++;
-                commands[i] = (char*)malloc(strlen(buff));
-                strcpy(commands[i], buff);
-                i++;
-            }
-            else
-            {
-                line++;
-            }
-            memset(buff, '\0', BUFF_LEN);
-            p = buff;
+            *end = *line;
+            break;
         }
         else
         {
             *p = *line;
+            printf("char: %c, %c, %p, %p\n",*line, *p, line, p);
             line++;
             p++;
         }
     }
-    if (strlen(buff) != 0)
-    {
-        commands[i] = (char*)malloc(strlen(buff));
-        strcpy(commands[i], buff);
-        i++;
-    }
-    return i;
+    copybuff(buff, command);
+    printf("%p parsed command: %s\n", command, command);
+    return strlen(buff);
 }
 
-short execute_command(char* cmd)
+short execute_command(char* cmd, char* end)
 {
     short status = SUCCESS;
     int result;
     pid_t child_pid;
-    int status;
+    char* tokens[MAX_TOKEN];
+    printf("%s", "tokenizing commands\n");
+    int i = 0, tcount = tokenize_cmd(cmd, tokens);
 
     // Fork the child process
-    child_pid = fork();
+    // child_pid = fork();
 
     // Check for errors in fork()
     switch (child_pid) {
     case EAGAIN:
         //Error due to I/O
-        perror("Error EAGAIN: ");
-        return 0;
+        perror("Error EAGAIN");
+        return EAGAIN;
     case ENOMEM:
         //Not able to allocate memory error
-        perror("Error ENOMEM: ");
-        return 1;
+        perror("Error ENOMEM");
+        return ENOMEM;
+    case ENOSYS:
+        //fork is not suppoted on this system
+        perror("Error ENOSYS");
+        return ENOSYS;
     }
-
+    
+    for(i = 0; i < tcount; i++)
+    {
+        printf("%s\n", tokens[i]);
+    }
+    
     if (child_pid == 0) {
 
+        // Set up redirection in the child process
+        // if (i)
+        //     //if there is an input symbol
+        //     freopen(i_name, "r", stdin);
+
+        // if (o)
+        //     //if there is an output symbol
+        //     freopen(o_name, "w+", stdout);
+
+        // // Execute the command
+        // result = execvp(tokens[0], tokens);
+
+        exit(-1);
     }
+
     return status;
+}
+
+int tokenize_cmd(char* cmd, char** tokens)
+{
+    printf("%s\n", cmd);
+    char buff[BUFF_LEN] = {'\0'};
+    char *p = buff;
+    int i = 0;
+    while (*cmd != '\0')
+    {
+        printf("%s\n", cmd);
+        if (*cmd == ' ' && *(cmd+1) != ' ')
+        {
+            copybuff(buff, tokens[i]);
+            memset(buff, '\0', BUFF_LEN);
+            p = buff;
+            i++;
+            cmd++;
+        }
+        else if(*cmd == ' ')
+        {
+            cmd++;
+        }
+        else
+        {
+            *p = *cmd;
+            cmd++;
+            p++;
+        }
+    }
+    return i;
 }
