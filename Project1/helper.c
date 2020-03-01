@@ -15,7 +15,10 @@
 ******************************************************************************/
 void print_user()
 {
-	printf("%s> ", getenv("USER"));
+	char path[MAX_LEN];
+	getcwd(path, MAX_LEN);
+	char* username = getenv("USER");
+	printf("%s@Directory:%s> ", getenv("USER"), path);
 }
 
 /******************************************************************************
@@ -65,4 +68,32 @@ int copybuff(char *buffer, char **destination)
 	strcpy(*destination, buffer);
 	(*destination)[len] = '\0';
 	return len;
+}
+
+/******************************************************************************
+* open a file with given file path
+******************************************************************************/
+FILE* openfile(char* filename)
+{
+	FILE *fp = NULL;
+
+    if (filename != NULL)
+    {
+        fp = fopen(filename, READ);
+
+        if (fp == NULL)
+            printf("Unable to open %s\n", filename);
+    }
+	return fp;
+}
+
+/******************************************************************************
+* closes the given file
+******************************************************************************/
+void closefile(FILE* fp)
+{
+	if(fp != NULL)
+	{
+		fclose(fp);
+	}
 }

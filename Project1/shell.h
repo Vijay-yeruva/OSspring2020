@@ -16,18 +16,21 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <stdio.h>
-#include <unistd.h>
 #include <stdlib.h>
 #include <errno.h>
 
 #include "helper.h"
 
-#define READ "r"
+#define PIPE '|'
+#define INPUT '<'
+#define OUTPUT '>'
+#define BKGPROCESS '&'
 
 void shell(char*);
 short execute_commands(char*);
 short execute_command(char*, char*);
 int parseCommand(char*, char**, char*);
 int tokenize_cmd(char*, char**);
+short awaitChildren();
 
 #endif
