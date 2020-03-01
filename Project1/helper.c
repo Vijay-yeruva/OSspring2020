@@ -58,14 +58,11 @@ char switch_keypad(char ch)
 /******************************************************************************
 * Copyies from null terimated buffer to destination
 ******************************************************************************/
-int copybuff(char* buffer, char* destination)
+int copybuff(char *buffer, char **destination)
 {
-	printf("%p\n", destination);
 	int len = strlen(buffer);
-	destination = (char *)malloc(len+1);
-	destination[len] = '\0';
-	strcpy(destination, buffer);
-	printf("source: %s, destination: %s\n", buffer, destination);
-	printf("%p\n", destination);
+	*destination = (char *)malloc(len + 1);
+	strcpy(*destination, buffer);
+	(*destination)[len] = '\0';
 	return len;
 }

@@ -16,7 +16,7 @@
 * Processes the input and determine whether it is a user interface operation 
 * or a set of commands that will need to be executed.
 ******************************************************************************/
-void shell(char* filename)
+void shell(char *filename)
 {
 
     /**************************************************************************
@@ -27,7 +27,7 @@ void shell(char* filename)
     **************************************************************************/
     short special_char = FALSE;
     int status, len = 0;
-    char ch, *line = (char*)malloc(MAX_LEN);
+    char ch, *line = (char *)malloc(MAX_LEN);
     memset(line, '\0', MAX_LEN);
     FILE *fp = NULL;
 
@@ -35,8 +35,8 @@ void shell(char* filename)
     {
         fp = fopen(filename, READ);
 
-        if (fp == NULL) printf("Unable to open %s\n", filename);
-
+        if (fp == NULL)
+            printf("Unable to open %s\n", filename);
     }
 
     /**************************************************************************
@@ -81,10 +81,10 @@ void shell(char* filename)
             ******************************************************************/
         case DELETE:
         {
-            //if line length is more than zero then it is already 
+            //if line length is more than zero then it is already
             if (len > 0)
                 len--;
-            delete(len, line);
+            delete (len, line);
             break;
         }
 
@@ -105,8 +105,15 @@ void shell(char* filename)
                 }
                 else if (ch == '\n' && len > 0)
                 {
-                    execute_commands(line);
-                    print_user();
+                    if (execute_commands(line) != TERMINATE)
+                    {
+                        print_user();
+                    }
+                    else
+                    {
+                        fclose(fp);
+                        return;
+                    }
                 }
             }
             break;
@@ -121,26 +128,21 @@ void shell(char* filename)
 * The execute_commands function will process and execute the commands in 
 * the variable line.
 ******************************************************************************/
-short execute_commands(char* line)
+short execute_commands(char *line)
 {
     short status = SUCCESS;
-    char* command;
-    char end = 0;
-    printf("%s", "parsing commands\n");
-    int len = parseCommand(line, command, &end);
-    printf("%s\n", "parsed commands");
-    if(len > 0)
-    printf("%s %s %d %s", "executing command: ",command,len, "\n");
-    status = execute_command(command, &end);
-    printf("%s", "executed commands\n");
+    char *command;
+    char end = '\0';
+    int len = parseCommand(line, &command, &end);
+    if (len > 0)
+        status = execute_command(command, &end);
     return status;
 }
 
-int parseCommand(char *line, char *command, char* end)
+int parseCommand(char *line, char **command, char *end)
 {
     char buff[BUFF_LEN] = {'\0'};
     char *p = buff;
-    printf("parsing line: %s\n",line);
     while (*line != '\0')
     {
         if (*line == '|' || *line == '<' || *line == '>' || *line == '&')
@@ -151,30 +153,34 @@ int parseCommand(char *line, char *command, char* end)
         else
         {
             *p = *line;
-            printf("char: %c, %c, %p, %p\n",*line, *p, line, p);
             line++;
             p++;
         }
     }
     copybuff(buff, command);
-    printf("%p parsed command: %s\n", command, command);
     return strlen(buff);
 }
 
-short execute_command(char* cmd, char* end)
+short execute_command(char *cmd, char *end)
 {
     short status = SUCCESS;
     int result;
     pid_t child_pid;
-    char* tokens[MAX_TOKEN];
-    printf("%s", "tokenizing commands\n");
+    char *tokens[MAX_TOKEN];
     int i = 0, tcount = tokenize_cmd(cmd, tokens);
+    for (i = 0; i < tcount; i++)
+    {
+        printf("%s\n", tokens[i]);
+    }
 
+    if (tokens[0] == "exit")
+        return TERMINATE;
     // Fork the child process
-    // child_pid = fork();
+    child_pid = fork();
 
     // Check for errors in fork()
-    switch (child_pid) {
+    switch (child_pid)
+    {
     case EAGAIN:
         //Error due to I/O
         perror("Error EAGAIN");
@@ -188,50 +194,44 @@ short execute_command(char* cmd, char* end)
         perror("Error ENOSYS");
         return ENOSYS;
     }
-    
-    for(i = 0; i < tcount; i++)
+
+
+    if (child_pid == 0)
     {
-        printf("%s\n", tokens[i]);
-    }
-    
-    if (child_pid == 0) {
+        //Set up redirection in the child process
+        if (*end != '\0')
+        {
+        }
+        else
+        {
+             result = execvp(tokens[0], tokens);
+        }
+        
+        // Execute the command
+       
 
-        // Set up redirection in the child process
-        // if (i)
-        //     //if there is an input symbol
-        //     freopen(i_name, "r", stdin);
-
-        // if (o)
-        //     //if there is an output symbol
-        //     freopen(o_name, "w+", stdout);
-
-        // // Execute the command
-        // result = execvp(tokens[0], tokens);
-
-        exit(-1);
+        return FAILURE;
     }
 
     return status;
 }
 
-int tokenize_cmd(char* cmd, char** tokens)
+int tokenize_cmd(char *cmd, char **tokens)
 {
-    printf("%s\n", cmd);
     char buff[BUFF_LEN] = {'\0'};
     char *p = buff;
     int i = 0;
     while (*cmd != '\0')
     {
-        printf("%s\n", cmd);
-        if (*cmd == ' ' && *(cmd+1) != ' ')
+        if (*cmd == ' ' && *(cmd + 1) != ' ')
         {
-            copybuff(buff, tokens[i]);
+            copybuff(buff, &tokens[i]);
             memset(buff, '\0', BUFF_LEN);
             p = buff;
             i++;
             cmd++;
         }
-        else if(*cmd == ' ')
+        else if (*cmd == ' ')
         {
             cmd++;
         }
@@ -242,5 +242,7 @@ int tokenize_cmd(char* cmd, char** tokens)
             p++;
         }
     }
+    copybuff(buff, &tokens[i]);
+    i++;
     return i;
 }

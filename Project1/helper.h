@@ -34,6 +34,6 @@ void print_user();
 char getch(FILE*);
 void delete(int, char*);
 char switch_keypad(char);
-int copybuff(char*, char*);
+int copybuff(char*, char**);
 
 #endif
