@@ -40,5 +40,6 @@ char switch_keypad(char);
 int copybuff(char*, char**);
 FILE* openfile(char*);
 void closefile(FILE* fp);
+void trimtrailingspace(char** ptrline);
 
 #endif

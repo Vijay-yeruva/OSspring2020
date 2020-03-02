@@ -102,3 +102,24 @@ void closefile(FILE* fp)
 		fclose(fp);
 	}
 }
+
+/******************************************************************************
+* function to trim space at the end of strings
+******************************************************************************/
+void trimtrailingspace(char** ptrline)
+{
+    char* line = *ptrline;
+    int len = strlen(line);
+    while(len > 0)
+    {
+        len--;
+        if (line[len] == ' ')
+        {
+            line[len] = '\0';
+        }
+        else
+        {
+            break;
+        }
+    }
+}

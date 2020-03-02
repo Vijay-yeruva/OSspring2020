@@ -170,10 +170,12 @@ short execute_command(char **line, char *end, int **ptrPrevfds)
         if (*end == INPUT)
         {
             parseCommand(line, &fin, end);
+            trimtrailingspace(&fin);
         }
         if (*end == OUTPUT)
         {
             parseCommand(line, &fout, end);
+            trimtrailingspace(&fout);
         }
     }
     else
@@ -338,9 +340,6 @@ int tokenize_cmd(char *cmd, char **tokens)
     char buff[BUFF_LEN] = {'\0'};
     char *p = buff;
     int i = 0;
-    //trim leading spaces
-    if (*cmd != '\0' && *cmd == ' ')
-        cmd++;
     //tokenize command by spaces
     while (*cmd != '\0')
     {
@@ -364,7 +363,8 @@ int tokenize_cmd(char *cmd, char **tokens)
         }
     }
     copybuff(buff, &tokens[i]);
-    i++;
+    if (strlen(buff) > 0)
+        i++;
     tokens[i] = NULL;
     return i;
 }
