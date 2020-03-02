@@ -95,11 +95,13 @@ void shell(char *filename)
                     line[len] = ch;
                     len++;
                 }
-                else 
+                else
                 {
                     if (execute_commands(line) != TERMINATE)
                     {
                         print_user();
+                        memset(line, '\0', MAX_LEN);
+                        len = 0;
                     }
                     else
                     {
@@ -123,94 +125,66 @@ void shell(char *filename)
 short execute_commands(char *line)
 {
     short status = SUCCESS;
-    char *command;
+    char *command, *fin, *fout;
     char end = '\0';
-    int len = parseCommand(line, &command, &end);
-
-    if (len > 0)
+    int *prevfds = NULL;
+    status = execute_command(&line, &end, &prevfds);
+    if (end != BKGPROCESS && status == SUCCESS)
     {
-        if (end == INPUT)
-        {
-            char *fin;
-            parseCommand(line, &fin, &end);
-            FILE* fp = freopen(fin, READ, stdin);
-            if(fp == NULL)
-            {
-                printf("Input file does not exist\n");
-                return FAILURE;
-            }
-        }
-
-        if (end == OUTPUT)
-        {
-            char *fout;
-            parseCommand(line, &fout, &end);
-            FILE* fp = freopen(fout, WRITE, stdout);
-            if(fp == NULL)
-            {
-                printf("Not able to open output file\n");
-                return FAILURE;
-            }
-        }
-
-        status = execute_command(command, &end);
-        if (status == SUCCESS)
-        {
-            status = execute_commands(line);
-        }
-        if (end != BKGPROCESS && status == SUCCESS)
-        {
-            status = awaitChildren();
-        }
+        status = awaitChildren();
     }
-
     return status;
 }
 
-int parseCommand(char *line, char **command, char *end)
+/******************************************************************************
+* The execute_command function will process and execute the commands recurssively  
+* one after the other.
+******************************************************************************/
+short execute_command(char **line, char *end, int **ptrPrevfds)
 {
-    char buff[BUFF_LEN] = {'\0'};
-    char *p = buff;
-    while (*line != '\0')
+    short status = SUCCESS;
+    int result, *fds = NULL, *prevfds = *ptrPrevfds;
+    pid_t child_pid;
+    char *tokens[MAX_TOKEN], *command = NULL, *fin = NULL, *fout = NULL;
+    int tcount = 0;
+    int len = parseCommand(line, &command, end);
+    //if there is command excute other wise return from here.
+    if (len > 0)
     {
-        if (*line == PIPE || *line == INPUT || *line == OUTPUT || *line == BKGPROCESS)
+        //Now tokenize the given command to get its args
+        tcount = tokenize_cmd(command, tokens);
+        //Check for exit
+        if (strncmp(tokens[0], "exit", 4) == SUCCESS)
+            return TERMINATE;
+        //check for change directory
+        if (strncmp(tokens[0], "cd", 2) == SUCCESS)
         {
-            *end = *line;
-            break;
+            if (tcount > 1)
+            {
+                chdir(tokens[1]);
+            }
+            return SUCCESS;
         }
-        else
+        //check if there is redirection at the end of current command and
+        //take note of the input and output files as needed
+        if (*end == INPUT)
         {
-            *p = *line;
-            line++;
-            p++;
+            parseCommand(line, &fin, end);
+        }
+        if (*end == OUTPUT)
+        {
+            parseCommand(line, &fout, end);
         }
     }
-    copybuff(buff, command);
-    return strlen(buff);
-}
-
-short execute_command(char *cmd, char *end)
-{
-    int result, fds[2];
-    pid_t child_pid;
-    char *tokens[MAX_TOKEN];
-    int tcount = tokenize_cmd(cmd, tokens);
-
-    if (strncmp(tokens[0], "exit", 4) == SUCCESS)
-        return TERMINATE;
-
-    if (strncmp(tokens[0], "cd", 2) == SUCCESS)
+    else
     {
-        printf("changing Directory to:%s\n", tokens[1]);
-        if(tcount > 1)
-        {
-            chdir(tokens[1]);
-        }
         return SUCCESS;
     }
 
+    //check if there is pipe at the end of the command
     if (*end == PIPE)
     {
+        fds = (int *)malloc(2 * sizeof(int));
         if (pipe(fds) < 0)
         {
             perror("pipe failed");
@@ -239,45 +213,135 @@ short execute_command(char *cmd, char *end)
 
     if (child_pid == 0)
     {
-        if (*end == PIPE)
+        //In the child do the necessary IO redirection
+        if (fin != NULL)
         {
-            //Set up redirection in the child process
-            close(fds[0]);
-            if (dup2(fds[1], STDOUT_FILENO) < 0)
+            FILE *fp = freopen(fin, READ, stdin);
+            if (fp == NULL)
+                perror("Cannot open input file");
+        }
+
+        if (fout != NULL)
+        {
+            FILE *fp = freopen(fout, WRITE, stdout);
+            if (fp == NULL)
+                perror("Cannot open output file");
+        }
+        //check if there is a pipe before this command
+        //if there is first redirect it to std in
+        if (prevfds != NULL)
+        {
+            close(prevfds[1]);
+            if (dup2(prevfds[0], STDIN_FILENO) == -1)
             {
                 perror("can't dup");
+                exit(FAILURE);
+            }
+            close(prevfds[0]);
+        }
+        //check if there is a pipe at the end of the command
+        //if there is then redirect the stout to pipe
+        if (*end == PIPE)
+        {
+            close(fds[0]);
+            if (dup2(fds[1], STDOUT_FILENO) == -1)
+            {
+                switch (errno)
+                {
+                case EBADF:
+                    perror("dup2 bad file discriptor");
+                    break;
+                case EBUSY:
+                    perror("dup2 busy opening file discriptor");
+                    break;
+                case EINTR:
+                    perror("dup2 interrupted by signal");
+                    break;
+                case EMFILE:
+                    perror("dup2 limit on open file discriptor");
+                    break;
+                default:
+                    break;
+                }
                 exit(1);
             }
             close(fds[1]);
         }
         // Execute the command
         result = execvp(tokens[0], tokens);
-        perror("execlp\n");
-        exit(FAILURE);
+        perror("execvp\n");
+        return FAILURE;
     }
     else
     {
-        //redirect the pipe to std for next command
+        //In parent process close all the previous pipes
+        if (prevfds != NULL)
+        {
+            close(prevfds[0]);
+            close(prevfds[1]);
+        }
+        //store the current pipes for next command
         if (*end == PIPE)
         {
-            close(fds[1]);
-            if (dup2(fds[0], STDIN_FILENO) < 0)
-            {
-                perror("can't dup");
-                exit(1);
-            }
-            close(fds[0]);
+            *ptrPrevfds = fds;
         }
+        //execute the command from remaining commands
+        execute_command(line, end, ptrPrevfds);
     }
-    
+
     return SUCCESS;
 }
 
+/******************************************************************************
+* The parseCommand function will extracts the first command from commands and  
+* removes it from the commands.
+******************************************************************************/
+int parseCommand(char **ptrline, char **ptrcommand, char *end)
+{
+    char *line = *ptrline;
+    char buff[BUFF_LEN] = {'\0'};
+    char *p = buff;
+    //trim leading spaces
+    while (*line != '\0' && *line == ' ')
+        line++;
+    //Do not reset the end when there is no line
+    if (*line != '\0')
+        *end = '\0';
+    //break the line at one of the connecting operations
+    while (*line != '\0')
+    {
+        if (*line == PIPE || *line == INPUT || *line == OUTPUT || *line == BKGPROCESS)
+        {
+            *end = *line;
+            line++;
+            break;
+        }
+        else
+        {
+            *p = *line;
+            line++;
+            p++;
+        }
+    }
+    //copy the buffer to command pointer
+    copybuff(buff, ptrcommand);
+    *ptrline = line;
+    return strlen(buff);
+}
+
+/******************************************************************************
+* The tokenize_cmd function will tokenize the command into command and arguments  
+* based on spaces between them.
+******************************************************************************/
 int tokenize_cmd(char *cmd, char **tokens)
 {
     char buff[BUFF_LEN] = {'\0'};
     char *p = buff;
     int i = 0;
+    //trim leading spaces
+    if (*cmd != '\0' && *cmd == ' ')
+        cmd++;
+    //tokenize command by spaces
     while (*cmd != '\0')
     {
         if (*cmd == ' ' && *(cmd + 1) != ' ')
@@ -288,7 +352,7 @@ int tokenize_cmd(char *cmd, char **tokens)
             i++;
             cmd++;
         }
-        else if (*cmd == ' ')
+        else if (*cmd == ' ') //trim unnecessary spaces
         {
             cmd++;
         }
@@ -301,17 +365,26 @@ int tokenize_cmd(char *cmd, char **tokens)
     }
     copybuff(buff, &tokens[i]);
     i++;
+    tokens[i] = NULL;
     return i;
 }
 
+/******************************************************************************
+* The awaitChildren function waits for all the child process to die
+******************************************************************************/
 short awaitChildren()
 {
-    pid_t cpid;
-    while(1) {
-        if ((cpid = wait(NULL)) == -1){
-            if (errno == ECHILD) {
+    pid_t cpid = 0;
+    while (1)
+    {
+        if ((cpid = wait(NULL)) == -1)
+        {
+            if (errno == ECHILD)
+            {
                 return SUCCESS;
-            } else {
+            }
+            else
+            {
                 perror("wait error");
                 return FAILURE;
             }
