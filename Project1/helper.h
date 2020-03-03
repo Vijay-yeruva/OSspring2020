@@ -1,7 +1,7 @@
 /******************************************************************************
 * 
-* Name: 	Your Name
-* Email: 	Your email
+* Name: 	Vijay Yeruva
+* Email: 	vyeruva@albany.edu
 *
 * helper.h
 *

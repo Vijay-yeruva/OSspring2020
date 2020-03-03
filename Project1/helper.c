@@ -1,7 +1,7 @@
 /******************************************************************************
 * 
-* Name: 	Your Name
-* Email: 	Your email
+* Name: 	Vijay Yeruva
+* Email: 	vyeruva@albany.edu
 *
 * helper.c 
 * Contains all the helper methods for the shell
@@ -11,7 +11,7 @@
 #include "helper.h"
 
 /******************************************************************************
-* Prints the device's username
+* Prints the device's username along with current directory
 ******************************************************************************/
 void print_user()
 {
@@ -59,7 +59,7 @@ char switch_keypad(char ch)
 }
 
 /******************************************************************************
-* Copyies from null terimated buffer to destination
+* Copies from null terminated buffer to destination
 ******************************************************************************/
 int copybuff(char *buffer, char **ptrdestination)
 {
@@ -76,7 +76,7 @@ int copybuff(char *buffer, char **ptrdestination)
 }
 
 /******************************************************************************
-* open a file with given file path
+* opens a file with given file path
 ******************************************************************************/
 FILE* openfile(char* filename)
 {

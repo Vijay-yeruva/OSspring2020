@@ -137,7 +137,7 @@ short execute_commands(char *line)
 }
 
 /******************************************************************************
-* The execute_command function will process and execute the commands recurssively  
+* The execute_command function will process and execute the commands recursively
 * one after the other.
 ******************************************************************************/
 short execute_command(char **line, char *end, int **ptrPrevfds)
