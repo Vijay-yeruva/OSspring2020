@@ -31,7 +31,7 @@
 #define ATADDRESS '@'
 #define SERVER_PNO 1026
 
-void shell(char*);
+void shell(FILE *fp);
 short execute_commands(char*);
 short execute_command(char**, char*,int**);
 int parseCommand(char**, char**, char*);

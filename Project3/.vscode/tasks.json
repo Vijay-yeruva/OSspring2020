@@ -3,13 +3,59 @@
 	"tasks": [
 		{
 			"type": "shell",
-			"label": "gcc build",
+			"label": "build myshell",
 			"command": "/usr/bin/gcc",
 			"args": [
 				"-g",
-				"${workspaceFolder}/*.c",
+				"${workspaceFolder}/myShell.c",
+				"${workspaceFolder}/shell.c",
+				"${workspaceFolder}/helper.c",
 				"-o",
 				"${workspaceFolder}/myshell.out"
+			],
+			"options": {
+				"cwd": "/usr/bin"
+			},
+			"problemMatcher": [
+				"$gcc"
+			],
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			}
+		},
+		{
+			"type": "shell",
+			"label": "build server",
+			"command": "/usr/bin/gcc",
+			"args": [
+				"-g",
+				"${workspaceFolder}/server.c",
+				"${workspaceFolder}/helper.c",
+				"-o",
+				"${workspaceFolder}/server.out"
+			],
+			"options": {
+				"cwd": "/usr/bin"
+			},
+			"problemMatcher": [
+				"$gcc"
+			],
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			}
+		},
+		{
+			"type": "shell",
+			"label": "build client",
+			"command": "/usr/bin/gcc",
+			"args": [
+				"-g",
+				"${workspaceFolder}/client.c",
+				"${workspaceFolder}/helper.c",
+				"-o",
+				"${workspaceFolder}/client.out"
 			],
 			"options": {
 				"cwd": "/usr/bin"

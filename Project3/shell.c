@@ -16,7 +16,7 @@
 * Processes the input and determine whether it is a user interface operation 
 * or a set of commands that will need to be executed.
 ******************************************************************************/
-void shell(char *filename)
+void shell(FILE *fp)
 {
     /**************************************************************************
     * short			special_char 	determines whether the character to be
@@ -28,7 +28,6 @@ void shell(char *filename)
     int status, len = 0;
     char ch, *line = (char *)malloc(MAX_LEN);
     memset(line, '\0', MAX_LEN);
-    FILE *fp = openfile(filename);
 
     /**************************************************************************
     * Loops until the user exits the program.
@@ -225,11 +224,13 @@ short execute_command(char **line, char *end, int **ptrPrevfds)
         {
             if(*fin == ATADDRESS)
             {
-                tcount = tokenize_cmd(fin, tokens);
-                if(tcount == 2 && strncmp(tokens[0], "@s", 2) == SUCCESS)
+                char *address[2];
+                FILE *fp; 
+                tcount = tokenize_cmd(fin, address);
+                if(tcount == 2 && strncmp(address[0], "@s", 2) == SUCCESS)
                 {
                     int fd = -1;
-                    int portno = atoi(tokens[1]);
+                    int portno = atoi(address[1]);
                     
                     if(startserver(portno, &fd) == SUCCESS)
                     {
@@ -240,7 +241,9 @@ short execute_command(char **line, char *end, int **ptrPrevfds)
                         }
                         close(fd);
                         printf("Started server on port:%d for inputs\n", portno);
-                        shell(NULL);
+                        fp = fdopen(STDIN_FILENO, READ);
+                        shell(fp);
+                        exit(SUCCESS);
                     }
                     else
                     {
@@ -249,10 +252,10 @@ short execute_command(char **line, char *end, int **ptrPrevfds)
                     }  
                 }
 
-                if(tcount == 2 && strncmp(tokens[0], "@c", 2) == SUCCESS)
+                if(tcount == 2 && strncmp(address[0], "@c", 2) == SUCCESS)
                 {
                     int fd = -1;
-                    if(startclient(tokens[1], &fd) == SUCCESS)
+                    if(startclient(address[1], &fd) == SUCCESS)
                     {
                         if (dup2(fd, STDIN_FILENO) == -1)
                         {
@@ -260,7 +263,9 @@ short execute_command(char **line, char *end, int **ptrPrevfds)
                             exit(FAILURE);
                         }
                         close(fd);
-                        shell(NULL);
+                        fp = fdopen(STDIN_FILENO, READ);
+                        shell(fp);
+                        exit(SUCCESS);
                     }
                     else
                     {
@@ -281,12 +286,14 @@ short execute_command(char **line, char *end, int **ptrPrevfds)
         {
             if(*fout == ATADDRESS)
             {
-                tcount = tokenize_cmd(fout, tokens);
-                if(tcount == 2 && strncmp(tokens[0], "@s", 2) == SUCCESS)
+                FILE*  fp;
+                int child_pid1 = -1;
+                char *address[2];
+                tcount = tokenize_cmd(fout, address);
+                if(tcount == 2 && strncmp(address[0], "@s", 2) == SUCCESS)
                 {
                     int fd = -1;
-                    int portno = atoi(tokens[1]);
-                    startserver(portno, &fd);
+                    int portno = atoi(address[1]);
                     if(startserver(portno, &fd) == SUCCESS)
                     {
                         if (dup2(fd, STDOUT_FILENO) == -1)
@@ -300,12 +307,25 @@ short execute_command(char **line, char *end, int **ptrPrevfds)
                     {
                         printf("Failed to start server\n");
                     }
+                    child_pid1 =  fork();
+                    if(child_pid1 == 0)
+                    {
+                        // Execute the command
+                        result = execvp(tokens[0], tokens);
+                        perror("execvp\n");
+                        return FAILURE;
+                    }
+                    else
+                    {
+                        fp = fdopen(STDIN_FILENO, READ);
+                        shell(fp);
+                    }
                 }
 
-                if(tcount == 2 && strncmp(tokens[0], "@c", 2) == SUCCESS)
+                if(tcount == 2 && strncmp(address[0], "@c", 2) == SUCCESS)
                 {
                     int fd = -1;
-                    if(startclient(tokens[1], &fd) == SUCCESS)
+                    if(startclient(address[1], &fd) == SUCCESS)
                     {
                         if(fd != -1)
                         {
@@ -320,6 +340,19 @@ short execute_command(char **line, char *end, int **ptrPrevfds)
                     else
                     {
                         printf("Failed to start client for server at: %s\n", tokens[1]);
+                    }
+                    child_pid1 =  fork();
+                    if(child_pid1 == 0)
+                    {
+                        // Execute the command
+                        result = execvp(tokens[0], tokens);
+                        perror("execvp\n");
+                        return FAILURE;
+                    }
+                    else
+                    {
+                        fp = fdopen(STDIN_FILENO, READ);
+                        shell(fp);
                     }
                 }
             }

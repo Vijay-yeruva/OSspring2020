@@ -41,5 +41,7 @@ int copybuff(char*, char**);
 FILE* openfile(char*);
 void closefile(FILE* fp);
 void trimtrailingspace(char** ptrline);
-
+void error(const char*);
+void startwriting(int);
+void startreading(int);
 #endif

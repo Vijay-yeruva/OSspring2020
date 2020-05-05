@@ -123,3 +123,84 @@ void trimtrailingspace(char** ptrline)
         }
     }
 }
+
+/******************************************************
+* Function writes error message
+*******************************************************/
+void error(const char *msg)
+{
+    perror(msg);
+    exit(1);
+}
+
+/******************************************************
+* Function writes from STDIN to given file descriptor
+*******************************************************/
+void startwriting(int fd)
+{
+    char buffer[BUFF_LEN] = {'\0'};
+	int n = 0;
+    while (TRUE)
+    {
+        char ch;
+        int len = 0;
+
+        printf("Enter command: ");
+        while (TRUE)
+        {
+            ch = getchar();
+            if (len < BUFF_LEN-1)
+            {
+                if (ch != '\n')
+                {
+                    buffer[len] = ch;
+                    len++;
+                }
+                else
+                {
+                    if (strncmp(buffer, "exit", 4) == SUCCESS)
+                    {
+                        break;
+                    }
+                    else
+                    {
+                        buffer[len] = '\n';
+                        n = write(fd, buffer, strlen(buffer));
+                        if (n < 0)
+                            error("ERROR writing to socket");
+                        memset(buffer, '\0', BUFF_LEN);
+                        len = 0;
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                printf("Exceeded max command length\n");
+                memset(buffer, '\0', BUFF_LEN);
+                len = 0;
+                break;
+            }
+        }
+
+        if (strlen(buffer) == 4 &&
+            strncmp(buffer, "exit", 4) == SUCCESS)
+        {
+            break;
+        }
+    }
+}
+
+/******************************************************
+* Function reads from given file descriptor and writes to STDOUT
+*******************************************************/
+void startreading(int fd)
+{
+    char buffer[BUFF_LEN] = {'\0'};
+	int n = 0;
+    while ((n = read(fd, buffer, BUFF_LEN - 1)) > 0)
+    {
+        buffer[n] = '\0';
+        printf("%s\n", buffer);
+    }
+}
