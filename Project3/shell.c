@@ -179,7 +179,13 @@ short execute_command(char **line, char *end, int **ptrPrevfds)
     }
     else
     {
-        return SUCCESS;
+        if(*end == INPUT && **line == ATADDRESS){
+            copybuff(*line, &fin);
+        }
+        else
+        {
+             return SUCCESS;
+        }
     }
 
     //check if there is pipe at the end of the command
@@ -217,16 +223,112 @@ short execute_command(char **line, char *end, int **ptrPrevfds)
         //In the child do the necessary IO redirection
         if (fin != NULL)
         {
-            FILE *fp = freopen(fin, READ, stdin);
-            if (fp == NULL)
-                perror("Cannot open input file");
+            if(*fin == ATADDRESS)
+            {
+                tcount = tokenize_cmd(fin, tokens);
+                if(tcount == 2 && strncmp(tokens[0], "@s", 2) == SUCCESS)
+                {
+                    int fd = -1;
+                    int portno = atoi(tokens[1]);
+                    
+                    if(startserver(portno, &fd) == SUCCESS)
+                    {
+                        if (dup2(fd, STDIN_FILENO) == -1)
+                        {
+                            perror("can't dup");
+                            exit(FAILURE);
+                        }
+                        close(fd);
+                        printf("Started server on port:%d for inputs\n", portno);
+                        shell(NULL);
+                    }
+                    else
+                    {
+                        printf("Failed to start server\n");
+                        exit(FAILURE);
+                    }  
+                }
+
+                if(tcount == 2 && strncmp(tokens[0], "@c", 2) == SUCCESS)
+                {
+                    int fd = -1;
+                    if(startclient(tokens[1], &fd) == SUCCESS)
+                    {
+                        if (dup2(fd, STDIN_FILENO) == -1)
+                        {
+                            perror("can't dup");
+                            exit(FAILURE);
+                        }
+                        close(fd);
+                        shell(NULL);
+                    }
+                    else
+                    {
+                        printf("Failed to start client\n");
+                        exit(FAILURE);
+                    }  
+                }
+            }
+            else
+            {
+                FILE *fp = freopen(fin, READ, stdin);
+                if (fp == NULL)
+                    perror("Cannot open input file");
+            }
         }
 
         if (fout != NULL)
         {
-            FILE *fp = freopen(fout, WRITE, stdout);
-            if (fp == NULL)
-                perror("Cannot open output file");
+            if(*fout == ATADDRESS)
+            {
+                tcount = tokenize_cmd(fout, tokens);
+                if(tcount == 2 && strncmp(tokens[0], "@s", 2) == SUCCESS)
+                {
+                    int fd = -1;
+                    int portno = atoi(tokens[1]);
+                    startserver(portno, &fd);
+                    if(startserver(portno, &fd) == SUCCESS)
+                    {
+                        if (dup2(fd, STDOUT_FILENO) == -1)
+                        {
+                            perror("can't dup");
+                            exit(FAILURE);
+                        }
+                        close(fd);
+                    }
+                    else
+                    {
+                        printf("Failed to start server\n");
+                    }
+                }
+
+                if(tcount == 2 && strncmp(tokens[0], "@c", 2) == SUCCESS)
+                {
+                    int fd = -1;
+                    if(startclient(tokens[1], &fd) == SUCCESS)
+                    {
+                        if(fd != -1)
+                        {
+                            if (dup2(fd, STDOUT_FILENO) == -1)
+                            {
+                                perror("can't dup");
+                                exit(FAILURE);
+                            }
+                            close(fd);
+                        }
+                    }
+                    else
+                    {
+                        printf("Failed to start client for server at: %s\n", tokens[1]);
+                    }
+                }
+            }
+            else
+            {
+                FILE *fp = freopen(fout, WRITE, stdout);
+                if (fp == NULL)
+                    perror("Cannot open output file");
+            } 
         }
         //check if there is a pipe before this command
         //if there is first redirect it to std in
@@ -268,6 +370,7 @@ short execute_command(char **line, char *end, int **ptrPrevfds)
             }
             close(fds[1]);
         }
+
         // Execute the command
         result = execvp(tokens[0], tokens);
         perror("execvp\n");
@@ -389,4 +492,92 @@ short awaitChildren()
             }
         }
     }
+}
+
+/******************************************************************************
+* Function to start server
+******************************************************************************/
+int startserver(int portno, int* fd){
+
+    int tcount = 0, sockfd, clientfd;
+    socklen_t clilen;
+    struct sockaddr_in serv_addr, cli_addr;
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0)
+    {
+        perror("ERROR opening socket");
+        return FAILURE;
+    }
+        
+    bzero((char *)&serv_addr, sizeof(serv_addr));
+
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_addr.s_addr = INADDR_ANY;
+    serv_addr.sin_port = htons(portno);
+    if (bind(sockfd, (struct sockaddr *)&serv_addr,
+            sizeof(serv_addr)) < 0)
+    {
+        perror("ERROR on binding");
+        return FAILURE;
+    }
+        
+    listen(sockfd, 5);
+    clilen = sizeof(cli_addr);
+    clientfd = accept(sockfd,
+                    (struct sockaddr *)&cli_addr,
+                    &clilen);
+    *fd = clientfd;
+    return SUCCESS;
+}
+
+int startclient(char* host_port, int* fd){
+
+    int tcount = 0, sockfd, clientfd, portno;
+    socklen_t clilen;
+    struct sockaddr_in serv_addr, cli_addr;
+    struct hostent *server;
+    char hostname[BUFF_LEN], *port_num;
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0)
+    {
+        perror("ERROR opening socket");
+        return FAILURE;
+    }
+    memset(hostname, '\0', BUFF_LEN);
+    char* p = host_port;
+    while (*p != '\0')
+    {
+       p++;
+       if(*p == '.')
+       {
+           p++;
+           port_num = p; 
+       }
+    }
+    strncpy(hostname, host_port, port_num - host_port-1);
+    portno = atoi(port_num);
+    server = gethostbyname(hostname);
+    if (server == NULL)
+    {
+        fprintf(stderr, "ERROR, no such host\n");
+        exit(0);
+    }
+    bzero((char *)&serv_addr, sizeof(serv_addr));
+    serv_addr.sin_family = AF_INET;
+    bcopy((char *)server->h_addr_list[0],
+          (char *)&serv_addr.sin_addr.s_addr,
+          server->h_length);
+    serv_addr.sin_port = htons(portno);
+
+    if (connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
+    {
+        perror("ERROR connecting");
+        return FAILURE;
+    }
+    else
+    {
+        printf("Started client for server on host:%s and port:%d \n",hostname,portno);
+    }  
+    *fd = sockfd;
+    return SUCCESS;
 }

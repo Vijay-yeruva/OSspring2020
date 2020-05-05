@@ -20,6 +20,7 @@
 #include <unistd.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <netdb.h>
 
 #include "helper.h"
 
@@ -36,5 +37,7 @@ short execute_command(char**, char*,int**);
 int parseCommand(char**, char**, char*);
 int tokenize_cmd(char*, char**);
 short awaitChildren();
+int startserver(int, int*);
+int startclient(char*, int*);
 
 #endif
