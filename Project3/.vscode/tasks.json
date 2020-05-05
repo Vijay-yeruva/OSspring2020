@@ -11,7 +11,7 @@
 				"${workspaceFolder}/shell.c",
 				"${workspaceFolder}/helper.c",
 				"-o",
-				"${workspaceFolder}/myshell.out"
+				"${workspaceFolder}/myshell"
 			],
 			"options": {
 				"cwd": "/usr/bin"
@@ -33,7 +33,7 @@
 				"${workspaceFolder}/server.c",
 				"${workspaceFolder}/helper.c",
 				"-o",
-				"${workspaceFolder}/server.out"
+				"${workspaceFolder}/server"
 			],
 			"options": {
 				"cwd": "/usr/bin"
@@ -55,7 +55,7 @@
 				"${workspaceFolder}/client.c",
 				"${workspaceFolder}/helper.c",
 				"-o",
-				"${workspaceFolder}/client.out"
+				"${workspaceFolder}/client"
 			],
 			"options": {
 				"cwd": "/usr/bin"
