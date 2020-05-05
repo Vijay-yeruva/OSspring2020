@@ -1,0 +1,2 @@
+Char count:
+8

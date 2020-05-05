@@ -1,0 +1,10 @@
+total 96
+-rw-r--r-- 1 vijay vijay     0 Mar  2 19:54 foo
+-rwxrw-rw- 1 vijay vijay  3225 Mar  1 21:59 helper.c
+-rwxrw-rw- 1 vijay vijay   846 Mar  1 21:58 helper.h
+-rwxr-xr-x 1 vijay vijay 18232 Mar  2 19:47 myshell
+-rwxrw-rw- 1 vijay vijay   718 Feb 26 13:17 myShell.c
+-rwxrw-rw- 1 vijay vijay   361 Feb 26 13:07 myShell.h
+-rw-r--r-- 1 vijay vijay 45056 Feb 29 16:05 project1.doc
+-rwxrw-rw- 1 vijay vijay 11862 Mar  1 22:19 shell.c
+-rwxrw-rw- 1 vijay vijay   712 Mar  1 17:25 shell.h
